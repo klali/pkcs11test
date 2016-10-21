@@ -41,7 +41,12 @@ TEST(Init, Uninitialized) {
   EXPECT_CKR(CKR_CRYPTOKI_NOT_INITIALIZED, g_fns->C_CloseSession(1));
 
   CK_MECHANISM mechanism;
-  EXPECT_CKR(CKR_CRYPTOKI_NOT_INITIALIZED, g_fns->C_EncryptInit(1, &mechanism, 1));
+  CK_RV rv = g_fns->C_EncryptInit(1, &mechanism, 1);
+  if(rv == CKR_FUNCTION_NOT_SUPPORTED) {
+    TEST_SKIPPED("C_EncryptInit not supported");
+  } else {
+    EXPECT_CKR(CKR_CRYPTOKI_NOT_INITIALIZED, rv);;
+  }
 
   CK_OBJECT_CLASS data_class = CKO_DATA;
   CK_ATTRIBUTE attrs[] = {
