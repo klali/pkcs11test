@@ -51,12 +51,19 @@ TEST_F(PKCS11Test, SeedRandomNoSession) {
 TEST_F(ReadOnlySessionTest, GenerateRandom) {
   CK_BYTE data[1024];
   if (g_token_flags & CKF_RNG) {
+    CK_RV rv = g_fns->C_GenerateRandom(session_, data, sizeof(data));
+    if(rv == CKR_USER_NOT_LOGGED_IN) {
+      Login(CKU_USER, g_user_pin);
+    }
     EXPECT_CKR_OK(g_fns->C_GenerateRandom(session_, data, sizeof(data)));
     EXPECT_CKR_OK(g_fns->C_GenerateRandom(session_, data, 10));
     EXPECT_CKR_OK(g_fns->C_GenerateRandom(session_, data, 100));
     CK_BYTE data2[100];
     EXPECT_CKR_OK(g_fns->C_GenerateRandom(session_, data2, 100));
     EXPECT_NE(0, memcmp(data, data2, 100));
+    if(rv == CKR_USER_NOT_LOGGED_IN) {
+      g_fns->C_Logout(session_);
+    }
   } else {
     EXPECT_CKR(CKR_RANDOM_NO_RNG, g_fns->C_GenerateRandom(session_, data, sizeof(data)));
   }
@@ -68,13 +75,24 @@ TEST(RNG, GenerateRandomNoInit) {
 }
 
 TEST_F(ReadOnlySessionTest, GenerateRandomBadArguments) {
-  EXPECT_CKR(CKR_ARGUMENTS_BAD, g_fns->C_GenerateRandom(session_, nullptr, 1));
+  CK_RV rv = g_fns->C_GenerateRandom(session_, nullptr, 1);
+  if(rv == CKR_USER_NOT_LOGGED_IN) {
+    Login(CKU_USER, g_user_pin);
+    rv = g_fns->C_GenerateRandom(session_, nullptr, 1);
+    g_fns->C_Logout(session_);
+  }
+  EXPECT_CKR(CKR_ARGUMENTS_BAD, rv);
 }
 
 TEST_F(ReadOnlySessionTest, GenerateRandomNone) {
   CK_BYTE data[64];
   if (g_token_flags & CKF_RNG) {
     CK_RV rv = g_fns->C_GenerateRandom(session_, data, 0);
+    if(rv == CKR_USER_NOT_LOGGED_IN) {
+      Login(CKU_USER, g_user_pin);
+      rv = g_fns->C_GenerateRandom(session_, data, 0);
+      g_fns->C_Logout(session_);
+    }
     EXPECT_TRUE(rv == CKR_OK || rv == CKR_ARGUMENTS_BAD) << CK_RV_(rv);
   }
 }
